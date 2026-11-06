@@ -1,0 +1,108 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ozon_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ozon_dwh
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  airflow_db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD}
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airflow_init:
+    image: apache/airflow:3.3.2
+    command: db migrate
+    environment:
+      AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW_FERNET_KEY}"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://airflow:${AIRFLOW_DB_PASSWORD}@airflow_db:5432/airflow"
+    depends_on:
+      airflow_db:
+        condition: service_healthy
+
+  airflow_dag_processor:
+    image: apache/airflow:3.3.2
+    command: dag-processor
+    environment:
+      AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW_FERNET_KEY}"
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://airflow:${AIRFLOW_DB_PASSWORD}@airflow_db:5432/airflow"
+    depends_on:
+      airflow_init:
+        condition: service_completed_successfully
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+
+  airflow_api:
+    image: apache/airflow:3.3.2
+    command: api-server
+    environment:
+      AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW_FERNET_KEY}"
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__API_AUTH__JWT_SECRET: "${AIRFLOW_JWT_SECRET}"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://airflow:${AIRFLOW_DB_PASSWORD}@airflow_db:5432/airflow"
+    depends_on:
+      airflow_init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+
+  airflow_scheduler:
+    image: apache/airflow:3.3.2
+    command: scheduler
+    environment:
+      OZON_CLIENT_ID: "${OZON_CLIENT_ID}"
+      OZON_API_KEY: "${OZON_API_KEY}"
+      OZON_CLIENT_ID_2: "${OZON_CLIENT_ID_2:-}"
+      OZON_API_KEY_2: "${OZON_API_KEY_2:-}"
+      AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW_FERNET_KEY}"
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow_api:8080/execution/"
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__API_AUTH__JWT_SECRET: "${AIRFLOW_JWT_SECRET}"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://airflow:${AIRFLOW_DB_PASSWORD}@airflow_db:5432/airflow"
+    depends_on:
+      airflow_init:
+        condition: service_completed_successfully
+      airflow_api:
+        condition: service_healthy
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./sql:/opt/airflow/sql:ro
+      - ./main.py:/opt/airflow/project/main.py:ro
+      - ./ozon_functions.py:/opt/airflow/project/ozon_functions.py:ro
+
+volumes:
+  postgres_data:
+  airflow_db_data:
+
+
+
+    
