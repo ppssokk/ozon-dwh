@@ -1,7 +1,6 @@
 """Ручной запуск загрузки Ozon и обновления хранилища."""
 from datetime import datetime, timezone
 from pathlib import Path
-import sys
 
 from airflow.sdk import Param, dag, get_current_context, task
 
@@ -26,7 +25,6 @@ def ozon_dwh_pipeline():
     def prepare_schema():
         # Инициализацию включаем явно при первом запуске.
         params = get_current_context()["params"]
-        sys.path.insert(0, "/opt/airflow/project")
         from main import get_headers, get_seller_settings
         get_headers(params["seller"])
         connection_id = get_seller_settings(params["seller"])["connection_id"]
@@ -69,8 +67,7 @@ def ozon_dwh_pipeline():
 
     @task
     def load_raw():
-        # Подключаем файлы проекта только во время выполнения задачи.
-        sys.path.insert(0, "/opt/airflow/project")
+        # main.py импортируем внутри задачи: он смонтирован только в контейнер scheduler.
         from main import main
 
         params = get_current_context()["params"]
@@ -84,7 +81,6 @@ def ozon_dwh_pipeline():
         from airflow.providers.postgres.hooks.postgres import PostgresHook
 
         sql = (Path("/opt/airflow/sql") / filename).read_text(encoding="utf-8")
-        sys.path.insert(0, "/opt/airflow/project")
         from main import get_seller_settings
         params = get_current_context()["params"]
         connection_id = get_seller_settings(params["seller"])["connection_id"]
