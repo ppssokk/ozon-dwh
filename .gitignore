@@ -3,3 +3,6 @@ logs/
 __pycache__/
 *.pyc
 .DS_Store
+.idea/
+*.ipynb
+dags/test_*.py
