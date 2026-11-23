@@ -77,6 +77,7 @@ services:
     image: apache/airflow:3.3.2
     command: scheduler
     environment:
+      PYTHONPATH: /opt/airflow/project
       OZON_CLIENT_ID: "${OZON_CLIENT_ID}"
       OZON_API_KEY: "${OZON_API_KEY}"
       OZON_CLIENT_ID_2: "${OZON_CLIENT_ID_2:-}"
