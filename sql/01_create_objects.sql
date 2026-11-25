@@ -896,8 +896,3 @@ IS 'pk_ — первичный ключ. Одна строка на сочета
 COMMENT ON CONSTRAINT fk_marts_posting_control_posting ON marts.posting_control
 IS 'fk_ — внешний ключ. Отправление должно существовать в stg.postings.';
 
-
-SELECT *
-FROM stg.products p
-LIMIT 5;
-

@@ -160,5 +160,3 @@ LEFT JOIN sku_map AS m ON m.sku = i.sku;
 -- 5. Фиксация результата и автоматическое удаление временной таблицы.
 COMMIT;
 
-SELECT *
-FROM stg.postings p;

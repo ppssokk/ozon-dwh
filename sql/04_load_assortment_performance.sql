@@ -146,5 +146,3 @@ CROSS JOIN tmp_assortment_period AS t;
 -- 5. Фиксация результата и автоматическое удаление временной таблицы.
 COMMIT;
 
-SELECT *
-FROM marts.assortment_performance ap;
